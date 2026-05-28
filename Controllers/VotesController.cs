@@ -69,13 +69,8 @@ public class VotesController(
         if (await db.Votes.AnyAsync(v => v.DeviceId == request.DeviceId))
             return Conflict(new { message = "Ya registraste tu voto desde este dispositivo." });
 
-        // 8. Verificar IP en ventana de 24h
+        // 8. Guardar voto (IP se registra solo para auditoría, no bloquea)
         var ip = GetClientIp();
-        var cutoff = DateTime.UtcNow.AddHours(-24);
-        if (await db.Votes.AnyAsync(v => v.IpAddress == ip && v.VotedAt >= cutoff))
-            return Conflict(new { message = "Ya se registró un voto desde tu red en las últimas 24 horas." });
-
-        // 9. Guardar voto
         db.Votes.Add(new Vote
         {
             CandidateId = request.CandidatoId,
