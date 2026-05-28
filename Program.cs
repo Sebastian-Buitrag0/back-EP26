@@ -29,10 +29,11 @@ builder.Services.AddRateLimiter(opt =>
 });
 
 // CORS
-var frontendUrl = builder.Configuration["Frontend:Url"] ?? "http://localhost:5173";
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:5173"];
 builder.Services.AddCors(opt =>
     opt.AddDefaultPolicy(p => p
-        .WithOrigins(frontendUrl)
+        .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials()));
