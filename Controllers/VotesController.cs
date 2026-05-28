@@ -94,6 +94,27 @@ public class VotesController(
         });
     }
 
+    [HttpPost("check")]
+    public async Task<IActionResult> Check([FromBody] CheckVoteRequest request)
+    {
+        if (string.IsNullOrEmpty(request.IdToken))
+            return BadRequest();
+
+        string googleSub;
+        try
+        {
+            googleSub = await googleTokenService.ValidateAndGetSubAsync(request.IdToken);
+        }
+        catch
+        {
+            return Unauthorized(new { message = "Token de Google inválido." });
+        }
+
+        var googleSubHash = Hash(googleSub);
+        var hasVoted = await db.Votes.AnyAsync(v => v.GoogleSubHash == googleSubHash);
+        return Ok(new { hasVoted });
+    }
+
     [HttpGet("results")]
     public async Task<ActionResult<ResultsSummaryDto>> Results()
     {
