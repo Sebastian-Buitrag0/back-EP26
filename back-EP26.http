@@ -1,0 +1,6 @@
+@back_EP26_HostAddress = http://localhost:5217
+
+GET {{back_EP26_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
