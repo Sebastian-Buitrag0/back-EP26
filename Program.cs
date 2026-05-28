@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using BackEP26.Data;
+using BackEP26.Hubs;
 using BackEP26.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,8 +34,10 @@ builder.Services.AddCors(opt =>
     opt.AddDefaultPolicy(p => p
         .WithOrigins(frontendUrl)
         .AllowAnyHeader()
-        .AllowAnyMethod()));
+        .AllowAnyMethod()
+        .AllowCredentials()));
 
+builder.Services.AddSignalR();
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -50,4 +53,5 @@ using (var scope = app.Services.CreateScope())
 app.UseCors();
 app.UseRateLimiter();
 app.MapControllers();
+app.MapHub<ResultsHub>("/hubs/results");
 app.Run();

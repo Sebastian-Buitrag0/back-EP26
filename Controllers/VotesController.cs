@@ -2,10 +2,12 @@ using System.Security.Cryptography;
 using System.Text;
 using BackEP26.Data;
 using BackEP26.DTOs;
+using BackEP26.Hubs;
 using BackEP26.Models;
 using BackEP26.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace BackEP26.Controllers;
@@ -15,7 +17,8 @@ namespace BackEP26.Controllers;
 public class VotesController(
     AppDbContext db,
     GoogleTokenService googleTokenService,
-    RecaptchaService recaptchaService) : ControllerBase
+    RecaptchaService recaptchaService,
+    IHubContext<ResultsHub> hub) : ControllerBase
 {
     [HttpPost]
     [EnableRateLimiting("vote")]
@@ -50,7 +53,6 @@ public class VotesController(
         var age = today.Year - request.BirthDate.Year;
         if (request.BirthDate > today.AddYears(-age)) age--;
 
-        // Rechazar si la fecha de nacimiento es claramente inválida (< 5 años o > 120 años)
         if (age < 5 || age > 120)
             return BadRequest(new { message = "Fecha de nacimiento inválida." });
 
@@ -85,6 +87,9 @@ public class VotesController(
 
         await db.SaveChangesAsync();
 
+        // 10. Notificar a todos los clientes conectados vía SignalR
+        await hub.Clients.All.SendAsync("ResultsUpdated", await BuildSummaryAsync());
+
         return Ok(new
         {
             message = isHonorary
@@ -96,6 +101,11 @@ public class VotesController(
 
     [HttpGet("results")]
     public async Task<ActionResult<ResultsSummaryDto>> Results()
+    {
+        return Ok(await BuildSummaryAsync());
+    }
+
+    private async Task<ResultsSummaryDto> BuildSummaryAsync()
     {
         var candidates = await db.Candidates
             .Select(c => new
@@ -123,12 +133,12 @@ public class VotesController(
             })
             .ToList();
 
-        return Ok(new ResultsSummaryDto
+        return new ResultsSummaryDto
         {
             Results = results,
             TotalVotes = totalRegular,
             TotalHonoraryVotes = totalHonorary
-        });
+        };
     }
 
     private string GetClientIp()
